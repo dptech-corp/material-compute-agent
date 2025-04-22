@@ -4,7 +4,7 @@
 BRANCH="${1:-main}"  # 默认为 main 分支，也可以传入 dev / feat/xxx
 
 OS="$(uname)"
-GITHUB_URL="https://github.com/dptech-corp/paper-reproduce-agent.git"
+GITHUB_URL="https://github.com/dptech-corp/material-compute-agent.git"
 
 echo "🚀 开始安装 Science Agent Framework（分支: $BRANCH）..."
 
