@@ -307,7 +307,7 @@ class SimPleChat:
             base_url=key_dict.get("DEEP_SEEK_BASE_URL"),
         )
 
-        self.model = self.key_dict.get("AZURE_MODEL_NAME")
+        self.model = key_dict.get("AZURE_MODEL_NAME")
 
     def refresh(self):
         self.messages = [{"role": "system", "content": self.system}]
