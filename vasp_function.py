@@ -285,219 +285,365 @@ import json
 import re
 import warnings
 import requests
-import time
-import os
 from pymatgen.core import Lattice, Structure, Element
 from pymatgen.io.vasp.inputs import Poscar
 import openai
 
-
 class SimPleChat:
+    
     def __init__(self, system="你是一个在晶体结构领域的专家"):
-        self.system = system
+        self.system =system
         self.refresh()
+        
 
         key_dict = dict(
             DEEP_SEEK_BASE_URL="https://api.deepseek.com",
-            DEEP_SEEK_API_KEY=os.getenv("DEEP_SEEK_API_KEY"),
+            DEEP_SEEK_API_KEY=os.environ.get("DEEP_SEEK_API_KEY"),
         )
-        assert key_dict["DEEP_SEEK_API_KEY"], "Please set the DEEP_SEEK_API_KEY."
+        assert key_dict.get("DEEP_SEEK_API_KEY", None) is not None, "Please set the DEEP_SEEK_API_KEY in environment."
+        assert key_dict.get("DEEP_SEEK_BASE_URL", None) is not None, "Please set the DEEP_SEEK_BASE_URL in environment."
         self.client = openai.OpenAI(
-            api_key=key_dict["DEEP_SEEK_API_KEY"],
-            base_url=key_dict["DEEP_SEEK_BASE_URL"],
+            api_key=key_dict.get("DEEP_SEEK_API_KEY"),
+            base_url=key_dict.get("DEEP_SEEK_BASE_URL"),
         )
-        self.model = key_dict.get("OPENAI_MODEL_NAME", "deepseek-chat")
+
+        self.model = self.key_dict.get("AZURE_MODEL_NAME")
 
     def refresh(self):
         self.messages = [{"role": "system", "content": self.system}]
 
-    def _ask(self, msg):
-        chat_completion = self.client.chat.completions.create(
-            model=self.model, messages=msg, response_format={"type": "text"}
-        )
-        return chat_completion.choices[0].message.content
+    def _ask(self,msg):
+        chat_completion = self.client.chat.completions.create(model=self.model,
+                                                                messages=msg,
+                                                                response_format = {"type": "text"})
+        answer = chat_completion.choices[0].message.content
+        return answer
 
-    def Q(self, question):
+
+    def Q(self,question):
         self.messages.append({"role": "user", "content": str(question)})
         answer = self._ask(self.messages)
         self.messages.append({"role": "assistant", "content": str(answer)})
         return answer
+    
 
-
-def rep_string(string: str) -> str:
-    if "```json" in string:
-        match = re.search(r"```json(.*?)```", string, re.DOTALL)
-        if not match:
-            raise ValueError("No JSON block found.")
-        string = match.group(1).replace("\n", "")
+def make_float(strs):
+    if "/" in strs:
+        strs = strs.split("/")
+        return float(strs[0])/float(strs[1])
     else:
-        string = string.replace("\n", "").replace("'", '"')
-    return string
-
-
-def download_mp(material_id: str) -> Structure:
+        return float(strs)
+    
+def download_mp(material_id):
     from pymatgen.ext.matproj import MPRester
 
-    os.environ["HTTP_PROXY"] = "http://114.115.170.192:8118"
-    os.environ["HTTPS_PROXY"] = "http://114.115.170.192:8118"
     API_KEY = "msZce01AjFltxEu97whgD2TBdQYwdxhQ"
+    os.environ['HTTP_PROXY'] = 'http://114.115.170.192:8118'
+    os.environ['HTTPS_PROXY'] = 'http://114.115.170.192:8118'
+    # 下载结构并保存为 POSCAR 和 CIF 文件
     with MPRester(API_KEY) as mpr:
+        # 获取晶体结构
         structure = mpr.get_structure_by_material_id(material_id)
-    os.environ.pop("HTTP_PROXY", None)
-    os.environ.pop("HTTPS_PROXY", None)
+    os.environ['HTTP_PROXY'] = ''
+    os.environ['HTTPS_PROXY'] = ''
     return structure
 
 
-def get_structure_dp_database(formula: str, space_group: int | None = None, *, max_retries: int = 5):
-    url = "https://materials-db-agent.mlops.dp.tech/query/openai"
-    headers = {"accept": "application/json", "Content-Type": "application/json"}
+def get_structure_mp_database(formula,space_group=None):
+    from pymatgen.ext.matproj import MPRester
+    API_KEY = "msZce01AjFltxEu97whgD2TBdQYwdxhQ"
 
-    text = (
-        f"请给出空间群号为 {space_group} ,化学式为 {formula} ,的晶体结构。"
-        if space_group
-        else f"请给出化学式为 {formula} 的晶体结构。"
-    )
-    payload = {"text": text, "limit": 3}
-
-    for attempt in range(1, max_retries + 1):
-        try:
-            response = requests.post(url, headers=headers, json=payload, timeout=20)
-            if response.status_code == 200:
-                data = response.json().get("data", [])
-                if data:
-                    break
-            data = []
-        except Exception:
-            data = []
-
-        if attempt < max_retries:
-            time.sleep(1)
-        else:
-            data = []
-
-    if not data:
-        return []
+    # 下载结构并保存为 POSCAR 和 CIF 文件
+    with MPRester(API_KEY) as mpr:
+        results = mpr.get_entries(formula, sort_by_e_above_hull=True)
 
     res_data = []
-    for item in data:
-        res = {
-            "formula": item.get("formula", ""),
-            "material_id": item.get("material_id", ""),
-        }
-        res["structure"] = download_mp(res["material_id"])
-        res_data.append(res)
+    for n,entry in enumerate(results):
+        res = {}
+        
+        entry_id = entry.entry_id  # e.g., "mp-22474"
+
+        # 获取结构信息
+        structure = entry.structure
+        
+        res["formula"] =  entry.composition.formula
+        res["material_id"] =  entry.data.get("material_id","")
+        res["entry_id"] =  entry_id
+        res["structure"] = structure
+        
+        if space_group:
+            sg,sgn = structure.get_space_group_info()
+            if isinstance(space_group, str) and space_group == sg:
+                res_data.append(res)
+            elif isinstance(space_group, int) and space_group == sgn:
+                res_data.append(res)
+        else:
+            res_data.append(res)
+                
+        if len(res_data) >= 3:
+            break
+        
     return res_data
+    
 
-
-def _search_poscar_template_once(formula: str):
-    ba = SimPleChat(system="你是一个在晶体结构领域的专家")
-
-    ba.Q(
-        "1. 根据下文给出的元素种类及配比,判断是否多类元素通过原子置换的方式占据了同类位点,给出同类位点的元素分组信息。"
-        "如果化学式中,判断部分为掺杂或吸附元素(如H,OH,轻金属等),而不是基础结构本身元素,分别在base、adsorb分别给出基础结构和掺杂/吸附的元素配比信息。"
-    )
-    ba.Q(f"需要分析的化学式为 {formula}")
-    res = ba.Q(
-        """
-        将上述结果,按照各位点(A,B,C,...)配比的公约数尝试简化为最简整数配比,并分别将同位置的元素类别分别带入位点,获得多个不同的化学式及公约数。
-        返回所有可能的化学式(包含减去吸附原子的base化学式)的字典及公约数, 如下：
-
-        {
-        "base":{"A":{"Sr":3,"Ca":1,"all":4},"B":{"Ti":4,"all":4},"C":{"O":12,"all":12}},
-        "adsorb":{},
-        "temps":{"Sr3CaTi4O12":1,"SrTiO3":4,"CaTiO3":4}
-        }
-
-        注意：只返回结果字典,不要任何其他解释性信息。
-        """
-    )
-    res = json.loads(rep_string(res))
-
-    base = res.get("base", {})
-    temps = res.get("temps", {})
-    adsorb = res.get("adsorb", {})
-
-    msgs = []
-    sup = {
-        1: (1, 1, 1),
-        2: (2, 1, 1),
-        3: (3, 1, 1),
-        4: (2, 2, 1),
-        5: (5, 1, 1),
-        6: (2, 3, 1),
-        7: (7, 1, 1),
-        8: (2, 2, 2),
-        9: (3, 3, 1),
-        10: (5, 2, 1),
-        11: (11, 1, 1),
-        12: (3, 2, 2),
+def get_structure_dp_database(formula,space_group=None):
+    
+    url = "https://materials-db-agent.mlops.dp.tech/query/openai"
+    headers = {
+        "accept": "application/json",
+        "Content-Type": "application/json"
+    }
+    if space_group:
+        text = f"请给出空间群号为 {space_group} ,化学式为 {formula} ,的晶体结构。"
+    else:
+        text = f"请给出化学式为 {formula} 的晶体结构。"
+    
+    payload = {
+        "text": text,  # Replace with your actual query text
+        "limit": 3        # You can adjust the limit as needed
     }
 
-    for cur_formula, factor in temps.items():
-        factor = int(factor)
-        msg = get_structure_dp_database(cur_formula)
-        if not msg:
-            continue
+    response = requests.post(url, headers=headers, json=payload)
 
-        for mi in msg:
-            structure = mi["structure"].copy()
-            structure.make_supercell(sup.get(factor, (1, 1, 1)))
-            mi["space_group"] = structure.get_space_group_info()
+    if response.status_code == 200:
+        data = response.json()  # Get the JSON response data
+        # print("Response data:", data)
+    else:
+        print(f"Request failed with status code {response.status_code}")
+        print("Response:", response.text)
+        raise Exception(f"Request failed with status code {response.status_code}")
+    
+    data = data.get("data", [])
+    if not data:
+        return []
+    
+    res_data = []
+    for item in data:
+        res = {}
+        res["formula"] =  item.get('formula',"")
+        res["material_id"] =  item.get('material_id',"")
+        
+        # method 1
+        structure =  download_mp(item.get('material_id'))
+        
+        res["structure"] = structure
+        res_data.append(res)
 
-            if factor != 1 and base:
-                for bv in base.values():
-                    bv.pop("all", None)
-                    names = [elm for elm, num in bv.items() for _ in range(int(num))]
-                    idxs = [i for i, s in enumerate(structure.symbol_set) if s in names]
-                    if len(idxs) == len(names):
-                        for idx, new_sym in zip(idxs, names):
-                            structure.replace(idx, new_sym)
 
-            if adsorb:
-                prompt_ads = (
-                    f"吸附/掺杂元素种类及个数信息为：{adsorb}"
-                    f"。请根据已有基底结构{structure}, 估计合理的分数坐标。"
-                    "注意：只返回结果字典,不要任何其他解释性信息。"
-                )
-                res_ads = json.loads(rep_string(ba.Q(prompt_ads)))
-                for sym, coords in res_ads.items():
-                    structure.append(sym, coords)
+    return res_data
 
-            mi.update(
-                {
-                    "structure": structure,
-                    "adsorb": adsorb,
-                    "base": base,
-                    "species": structure.symbol_set,
-                    "abc": structure.lattice.abc,
-                    "angle": structure.lattice.angles,
-                    "fractional_coords": structure.frac_coords.tolist(),
-                    "reference_formula": mi.pop("formula", cur_formula),
-                    "reference_material_id": mi.pop("material_id", ""),
-                    "poscar": Poscar(structure),
-                }
-            )
-            mi["poscar_str"] = str(mi["poscar"])
-            msgs.append(mi)
+def rep_string(string):
+    if "```json" in string:
+        json_pattern = r"```json(.*?)```"
+        match = re.search(json_pattern, string, re.DOTALL)
+        if match:
+            code = match.group(1)
+        else:
+            raise ValueError("No JSON block found in the string.")
+        string = re.sub(json_pattern, r"\1", code).replace("\n", "")
+    else:
+        string = string.replace("\n", "")
+        string = string.replace("'", '"')
+    return string
 
-    if not msgs:
+
+def check_structure(structure,space_group=None):
+    # score = []
+    if space_group:
+        sg,sgn = structure.get_space_group_info()
+        if isinstance(space_group, str) and space_group == sg:
+            return True
+        elif isinstance(space_group, int) and space_group == sgn:
+            return True
+        else:
+            return False
+    else:
+        return True
+    
+
+def search_poscar_template_once(formula: str):
+    """
+    对化学式进行数据库匹配、超胞扩展、原子替换和吸附处理后返回POSCAR模板
+
+    输入：化学式，比如"Sr5Ca3Fe8O24"
+    输出：POSCAR模板文件内容,和VASP输入文件格式
+
+    """
+    # 1. 获得解析后的文献,问询大模型
+    ba = SimPleChat(system="你是一个在晶体结构领域的专家")
+
+    prompt1 = """1. 根据下文给出的元素种类及配比,判断是否多类元素通过原子置换的方式占据了同类位点,给出同类位点的元素分组信息。
+    如果化学式中,判断部分为掺杂或吸附元素(如H,OH,轻金属等),而不是基础结构本身元素,分别在base、adsorb分别给出基础结构和掺杂/吸附的元素配比信息。adsorb元素不需要进行分组。
+    例如 "Sr3CaTi4O12"中, 假定Sr与Ca占据同类位点,Sr3CaTi4O12的那么化学式模板为A4B4O12,根据公约数,可简化为 ABO3 形式,而该形式正好符合钙钛矿ABO3模板。
+    因此 根据晶体学经验,"Sr3CaTi4O12" 的分组信息如下：
+    {
+    "base":{
+        "A":{"Sr":3,"Ca":1,"all":4},
+        "B":{"Ti":4,"all":4},
+        "C":{"O":12,"all":12},
+    },
+    "adsorb":{}
+    }
+    注意,上述分析应当首先检测是否已经符合已知材料种类配比,例如"Li7La3Zr2O12",为已知材料类型,分组信息可以为
+    {
+    "base":{
+            "A":{"Li":7,"all":7},
+            "B":{"La":3,"all":3},
+            "C":{"Zr":2,"all":2},
+            "D":{"O":12,"all":12},
+            },
+    "adsorb":{}
+    }
+    若原始化学式或分组后的化学式均无法符合已知材料配比，则每种元素均为单独位点。
+    """
+
+    prompt2 = f"\n你需要分析的化学式为 {formula}"
+    res = ba.Q(prompt1+prompt2)
+    # print(res)
+    prompt3 = """
+    将上述结果,按照各位点(A,B,C,...)配比的公约数尝试简化为最简整数配比,并分别将同位置的元素类别分别带入位点,获得多个不同的化学式及公约数。
+    例如"SrCaTi2O6"的A的配比和(all)为4, B的配比和(all)为4, C的配比和(all)为12, A:B:C位点配比为4:4:12,可以化简为1:1:3的最简整数配比ABC3,公约数为4。
+    注意不考虑元素的配比!!!仅分别将元素类别代入最简整数配比模板ABC3,获得化学式为"SrTiO3"与"CaTiO3"。
+    返回所有可能的化学式(包含减去吸附原子的base化学式)的字典及公约数, 如下：
+    
+    {
+    "base":{
+        "A":{"Sr":3,"Ca":1,"all":4},
+        "B":{"Ti":4,"all":4},
+        "C":{"O":12,"all":12},
+    },
+    "adsorb":{},
+    "temps":{"Sr3CaTi4O12":1,"SrTiO3":4,"CaTiO3":4}
+    }
+    
+    掺杂元素adsorb, 直接给出元素及配比信息。
+    注意: 只返回可以直接被json解析的结果字典,不要任何其他解释性信息。
+    
+    """
+    res = ba.Q(prompt3)
+
+    res = rep_string(res)
+    res = json.loads(res)
+    
+    base= res.get("base",{})
+    ri= res.get("temps",{})
+    adsorb = res.get("adsorb",{})
+
+    
+    msgs = []
+
+    for k,v in ri.items():
+        formula = k # 化学式
+        v = int(v) # 超胞大小
+        sup = {1:(1,1,1),2:(2,1,1),3:(3,1,1),4:(2,2,1),5:(5,1,1),6:(2,3,1),
+                7:(7,1,1),8:(2,2,2),9:(3,3,1),10:(5,2,1),11:(11,1,1),12:(3,2,2),}
+        msg = get_structure_dp_database(formula,space_group=None)
+        
+        if len(msg) == 0:
+            pass
+        else:
+            for mi in msg:
+                structure:Structure = mi.get("structure")
+                structure2 = structure.copy()
+                structure2 = structure2.make_supercell(sup.get(v))
+                
+                # Ensure all sites have the magmom property to avoid UserWarning
+
+                mi["structure"] = structure2
+                mi["space_group"] = structure2.get_space_group_info()
+                
+                if v==1:
+                    pass
+                else:
+                    for bk,bv in base.items():
+                        bv.pop("all",None)
+                        if len(bv)<=1:
+                            pass
+                        else:
+                            names = list(bv.keys())
+                            namess = []
+                            for name,number in bv.items():
+                                if isinstance(number, float):
+                                    warnings.warn(f"Warning: Can't deal with float ratios {bv}, the result could be wrong.")
+
+                                namess.extend([name]*int(number))
+                                
+                            names_all = structure2.labels
+                            
+                            indexes = [i for i, name in enumerate(names_all) if name in names]
+                            
+                            if len(indexes) != len(namess) or set(namess)==1:
+                                pass
+                            else:
+                                for i in range(len(indexes)):
+                                    # print("replace",indexes[i],namess[i])
+                                    structure2=structure2.replace(indexes[i], namess[i],)
+                
+                if len(adsorb) != 0:
+                    prompt5 = "吸附/掺杂元素种类及个数信息为："
+                    prompt5 += str(adsorb)
+                    prompt5 += f"请根据已有基底结构{structure2}, 估计合理的每个吸附/掺杂物原子的分数x,y,z坐标信息，各原子之间键长合理。"
+                    prompt5 += """例如 {"O":2,"H":1} 的返回格式如:
+                    {
+                    "O": [[0.5, 0.22, 0.48], [0.5, 0.23, 0.5]], 
+                    "H": [[0.5, 0.23, 0.52]]
+                    }
+                    """
+                    prompt5 += "注意：只返回吸附/掺杂位点的结果字典,不要任何其他解释性信息。"
+                    res = ba.Q(prompt5)
+                    # print(res)
+                    res = rep_string(res)
+                    res = json.loads(res)
+                    
+                    res_add = {}
+                    for resk,resv in res.items():
+                        check = Element.is_valid_symbol(resk)
+                            
+                        if check and isinstance(resv, list):
+                            for resvi in resv:
+                                res_add[resk] = resvi
+                else:
+                    res_add = {}
+                
+                if len(res_add)>0:
+                    for res_kk,res_vv in res_add.items():
+                        structure2=structure2.append(res_kk,res_vv)
+                        
+                mi["adsorb"] = adsorb
+                mi["base"] = base
+                mi["species"] = structure2.symbol_set
+                mi["abc"] = structure2.lattice.abc
+                mi["angle"] = structure2.lattice.angles
+                mi["fractional_coords"] = structure2.frac_coords.tolist()
+                mi["reference_formula"] = mi.pop("formula")
+                mi["reference_material_id"] = mi.pop("material_id")
+                
+                mi["poscar"] = Poscar(structure2)
+                mi["poscar_str"] = str(mi["poscar"])
+                
+                msgs.append(mi)
+
+                
+    if len(msgs) == 0:
         raise ValueError("未能获取合适的结构模板。")
+    
+    with open('prompt/format.txt', 'r') as file:
+        vt_format = file.read()
+    return {"poscar_template":msgs[0]["poscar_str"], "vt_format":vt_format}
 
-    with open(
-        "/bohr/paperagent-vgwq/v4/science-agent-framework/prompt/format.txt", "r"
-    ) as fp:
-        vt_format = fp.read()
-
-    return {"poscar_template": msgs[0]["poscar_str"], "vt_format": vt_format}
 
 
 def search_poscar_template(formula: str, *, max_retries: int = 5):
     """
-    尝试整个流程最多 max_retries 次，直到成功返回。
+    对化学式进行数据库匹配、超胞扩展、原子替换和吸附处理后返回POSCAR模板
+
+    输入：化学式，比如"Sr5Ca3Fe8O24"
+    输出：POSCAR模板文件内容,和VASP输入文件格式
+    
     """
     for attempt in range(1, max_retries + 1):
         try:
-            return _search_poscar_template_once(formula)
+            return search_poscar_template_once(formula)
         except Exception as e:
             if attempt == max_retries:
                 raise
