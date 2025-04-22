@@ -38,25 +38,15 @@ async def submit_vasp_job(
         shutil.copy("job.json", os.path.join(calcdir, "job.json"))
     except Exception as e:
         return f"错误：无法复制job.json文件 - {str(e)}"
-    shell_path = os.environ.get("SHELL", "")
 
-    if shell_path == "/bin/zsh":
-        command = f'cd {calcdir} && source ~/.zshrc && bohr job submit -i job.json -p ./'
-        result = subprocess.run(
-            ['/bin/zsh', '-i', '-c', command],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True
-        )
-    else:
-        command = f'cd {calcdir} && source ~/.bashrc && bohr job submit -i job.json -p ./'
-        result = subprocess.run(
-            ['/bin/bash', '-c', command],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True
-        )
-    
+    command = f'cd {calcdir} && source ~/.bashrc && bohr job submit -i job.json -p ./'
+    result = subprocess.run(
+        ['/bin/bash', '-c', command],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True
+    )
+
     # 添加错误处理
     if result.returncode != 0:
         return f"错误：任务提交失败 - {result.stderr}"
@@ -162,18 +152,12 @@ async def monitor_vasp_job(
         try:
             shell_path = os.environ.get("SHELL", "")
             describe_cmd = f"bohr job describe -j {job_id} --json"
-            if shell_path == "/bin/zsh":
-                proc = await asyncio.create_subprocess_exec(
-                    shell_path, "-i", "-c", describe_cmd,
-                    stdout=asyncio.subprocess.PIPE,
-                    stderr=asyncio.subprocess.PIPE
-                )
-            else:
-                proc = await asyncio.create_subprocess_exec(
-                    shell_path, "-c", describe_cmd,
-                    stdout=asyncio.subprocess.PIPE,
-                    stderr=asyncio.subprocess.PIPE
-                )
+
+            proc = await asyncio.create_subprocess_exec(
+                shell_path, "-c", describe_cmd,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
             stdout, stderr = await proc.communicate()
 
             if proc.returncode != 0:
@@ -188,19 +172,13 @@ async def monitor_vasp_job(
                 
                 # 下载结果文件
                 download_cmd = f"bohr job download -j {job_id}"
-                shell_path = os.environ.get("SHELL", "")
-                if shell_path == "/bin/zsh":
-                    download_proc = await asyncio.create_subprocess_exec(
-                        shell_path, "-i", "-c", download_cmd,
-                        stdout=asyncio.subprocess.PIPE,
-                        stderr=asyncio.subprocess.PIPE
-                    )
-                else:
-                    download_proc = await asyncio.create_subprocess_exec(
-                        shell_path, "-c", download_cmd,
-                        stdout=asyncio.subprocess.PIPE,
-                        stderr=asyncio.subprocess.PIPE
-                    )
+
+                download_proc = await asyncio.create_subprocess_exec(
+                    shell_path, "-c", download_cmd,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE
+                )
+                
                 out, err = await download_proc.communicate()
 
                 if download_proc.returncode == 0:
