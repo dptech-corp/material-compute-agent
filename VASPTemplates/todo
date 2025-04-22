@@ -1,0 +1,9 @@
+Vasp Input generator
+    generator KPOINTS
+    generator POTCAR
+    generator INCAR
+INCAR tempelates
+    translate VT(Vasp input tempelates) file to INCAR, KPOINTS,POTCAR,INCAR files
+
+bugs:
+    Including temps that has the same name with dirs in the work path will crash

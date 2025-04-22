@@ -1,0 +1,7 @@
+%START KPOINTS
+K_Mesh Generated
+0
+Gamma
+%{1} %{2} %{3}
+0.0 0.0 0.0
+%END KPOINTS

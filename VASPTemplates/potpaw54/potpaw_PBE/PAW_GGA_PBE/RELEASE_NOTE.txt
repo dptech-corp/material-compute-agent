@@ -1,0 +1,58 @@
+Dear VASP users,
+
+After long and careful consideration we have decided to
+release a new set of POTCAR files covering the periodic table.
+This includes GW potentials for almost all elements.
+
+The potentials have been tested using standard DFT-"benchmark" runs
+(see the data_base file in the tar files).
+In most cases the potentials are literally identical to the
+previous releases, but ALL have been recalculated using
+a new version of the PAW generation code, to
+include additional information allowing for calculations
+with meta-GGA functionals. The present potentials can be
+used in VASP.4.6, but we strongly recommend to use them only
+in VASP.5.X, since some compatibility issues might emerge
+(e.g. LDA+U).
+
+Notable updates:
+Many of the 4d and 5d potentials have been updated
+to improve f-scattering properties. This decreases the lattice
+constants slightly for metals, and it might make a substantial
+difference for strongly ionic TM compounds (including oxides).
+
+As you will realize, we now have a large number of potentials
+for some elements. The rules which potential to use are
+identical to previous releases (nothing new here).
+
+Of course the GW potentials are all "new".
+As you will see (database) they give virtually identical results
+to the standard potentials, and it is safe to assume
+that one can use the GW potentials instead of standard
+LDA/GGA potential for groundstate calculations, without
+deteriorating the results. In fact, we believe the
+GW potentials are generally at least as good as the old standard
+potentials, but might be much better for some "groundstate" properties
+including EFG and NMR (well, matter of fact, these are
+properties related to excitations).
+
+However, the GW potentials yield much better scattering
+properties at high energies well above the Fermi-level
+(typically up to 10-20 Ry above the vacuum level).
+We believe that this is important for GW and RPA calculations,
+although firm proof is still missing.
+
+For GW calculations, we also recommend to treat as
+many electrons as computationally feasible as valence
+electrons (e.g. use Zn_sv_GW for GW, whereas the Zn or Zn_GW
+potentials are sufficiently accurate for groundstate calculations).
+
+The LDA and PBE sets are identical, except for the lanthanides,
+for which only PBE potentials are available.
+
+You will find the new potentials on the download-portal and
+on the vasp5 account of the ftp server.
+
+Cheers, 
+
+ Georg Kresse

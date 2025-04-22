@@ -1,0 +1,25 @@
+   TITEL  = PAW Zn_sv_GW 01Dec2010
+   LPAW   = T
+   RPACOR =    1.00
+   RWIGS  =    1.80  nn distance
+
+   RCLOC  =    1.2
+   LCOR   =   .TRUE.
+  QCUT = 0 
+   NE     =   1000
+   EMIN   =   -10
+   EMAX   =    30
+
+   Description
+ l     E      TYP  RCUT    TYP  RCUT
+ 0     0.0     23   1.2
+ 0     0.0     23   1.2
+ 0    10.0     23   1.2
+ 1     0.0     23   1.45
+ 1     0.0     23   1.45
+ 1    10.0     23   1.45
+ 2     0.0     23   1.7
+ 2     0.05    23   1.7
+ 2     9.0     23   1.7
+ 3     4.0     23   1.9
+ 3    10.0     23   1.9

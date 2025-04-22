@@ -1,0 +1,4 @@
+#!/bin/bash
+mkdir DO_AGAIN
+cp INCAR POTCAR KPOINTS run.sh DO_AGAIN/
+cp CONTCAR DO_AGAIN/POSCAR

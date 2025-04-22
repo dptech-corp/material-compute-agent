@@ -1,0 +1,60 @@
+---XX.VT---
+%POSCAR=POSCAR     # 假设你已经生成好 POSCAR 文件
+%PSEUDO_DIR=/bohr/paperagent-vgwq/v4/science-agent-framework/VASPTemplates/potpaw54/potpaw_PBE/PAW_GGA_PBE/ #不用修改
+%POTCAR_ROOT=/bohr/paperagent-vgwq/v4/science-agent-framework/VASPTemplates/potpaw54/potpaw_PBE/ #不用修改
+
+%POT-Sr=Sr_sv
+%POT-Ca=Ca_sv
+%POT-Fe=Fe_pv
+%POT-O=O
+
+%START KPOINTS #这部分不用修改
+Automatic mesh
+0
+Gamma #这部分不用修改
+2 2 2
+0 0 0
+%END KPOINTS
+
+#------------------------#
+# electronic settings
+ISTART = 0              # Start from scratch
+ISPIN  = 2              # Spin-polarized (important for FM phase and d-electrons on Fe, Co, Cu, Mn, Ni)
+LREAL  = .FALSE.        # No real-space projection (better accuracy)
+ENCUT  = 450            # Energy cutoff as specified
+PREC   = Accurate       # Accurate precision
+LWAVE  = .FALSE.
+LCHARG = .FALSE.
+ADDGRID= .TRUE.         # Helps GGA convergence
+LASPH  = .TRUE.         # Non-spherical contributions
+GGA    = PE             # PBE functional
+
+#------------------------#
+# Hubbard U
+LDAU     = .TRUE.
+LDAUTYPE = 2
+LDAUL    = -1 -1 2 -1       # d-orbital for Fe and Ti only
+LDAUU    = 0  0  4 0        # Ueff = 4 eV for Fe
+LDAUJ    = 0  0  0 0 
+
+#------------------------#
+# Relaxation
+IBRION = -1
+#ISIF   = 3               # Relax both atomic positions, cell shape, and volume
+NSW    = 0
+EDIFF  = 1E-5             # SCF convergence criterion (energy)
+EDIFFG = -0.01            # Force convergence criterion (0.01 eV/Å)
+
+#------------------------#
+# Electronic
+ISMEAR = 0               # Gaussian smearing
+SIGMA  = 0.1             # Smearing width
+NELM   = 200             # Max electronic steps
+
+#------------------------#
+# Magnetic moment
+MAGMOM = 8*0.0 8*4.0 24*0.0 # Initial magnetic moments,与上面元素对应
+
+#------------------------#
+# Parallel settings
+NCORE = 4

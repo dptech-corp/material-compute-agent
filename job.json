@@ -1,0 +1,11 @@
+{
+    "job_name": "Bohrium-VASP",
+    "job_type": "container",
+    "command": "source /opt/intel/oneapi/setvars.sh && mpirun -n 32 vasp_std ",
+    "log_file": "tmp_log",
+    "backward_files": [],
+    "project_id": 21128,
+    "platform": "ali",
+    "machine_type": "c32_m32_cpu",
+    "image_address": "registry.dp.tech/dptech/vasp:5.4.4"
+}

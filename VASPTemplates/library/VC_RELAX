@@ -1,0 +1,22 @@
+#vc-relax project
+#------------------------#
+#electronic settings
+SYSTEM=%{ProjectName} #ProjectName
+ISTART=0 #A newly calculation task
+EDIFF=1d-9 #电子迭代收敛标准
+NELM=100 #迭代最大步数
+ENCUT=700 #平面波截断能
+#-------------------------#
+#ionic settings
+ISIF=3 #vc-relax
+IBRION=2 #共轭梯度算法优化离子步
+NSW=200 #最大迭代离子步
+EDIFFG=-1d-6 #原子弛豫收敛标准,负号表示按力的收敛标准
+#------------------------#
+#CPU settings
+NCORE=%{NCORE}
+KPAR=%{KPAR}
+#------------------------#
+#一些奇奇怪怪的东西都不输出
+ LWAVE = .FALSE. #whether the wavefunctions are written to the WAVECAR file at the end of a run.
+LCHARG = .FALSE. #whether the charge densities (files CHGCAR and CHG) are written.

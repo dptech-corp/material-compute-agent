@@ -1,0 +1,59 @@
+%POSCAR=POSCAR     # 假设你已经生成好 POSCAR 文件
+%PSEUDO_DIR=/Users/lhappy/llm/VASPTemplates/potpaw54/potpaw_PBE/PAW_GGA_PBE/
+%POTCAR_ROOT=/Users/lhappy/llm/VASPTemplates/potpaw54/potpaw_PBE/
+
+%POT-Sr=Sr_sv
+%POT-Ca=Ca_sv
+%POT-Fe=Fe_pv
+%POT-Ti=Ti_pv
+%POT-O=O
+
+%START KPOINTS
+Automatic mesh
+0
+Gamma
+2 2 2
+0 0 0
+%END KPOINTS
+
+#------------------------#
+# electronic settings
+SYSTEM = SrCaFeTiO
+ENCUT  = 520
+ISPIN  = 2
+LREAL  = .FALSE.
+PREC   = Accurate
+LWAVE  = .FALSE.
+LCHARG = .FALSE.
+ADDGRID= .TRUE.
+LASPH  = .TRUE.
+GGA    = PE
+
+#------------------------#
+# Hubbard U
+LDAU     = .TRUE.
+LDAUTYPE = 2
+LDAUL    = -1 -1 2 2 -1
+LDAUU    = 0  0  4 3  0
+LDAUJ    = 0  0  0 0  0
+
+#------------------------#
+# Relaxation
+IBRION = -1
+NSW    = 0
+EDIFF  = 1E-5
+EDIFFG = -0.01
+
+#------------------------#
+# Electronic
+ISMEAR = 0
+SIGMA  = 0.1
+NELM   = 200
+
+#------------------------#
+# Magnetic moment
+MAGMOM = 5*0.0 3*0.0 6*4.0 2*0.0 22*0.0
+
+#------------------------#
+# Parallel settings
+NCORE = 4
