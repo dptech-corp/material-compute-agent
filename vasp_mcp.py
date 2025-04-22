@@ -38,7 +38,7 @@ async def submit_vasp_job(
         shutil.copy("job.json", os.path.join(calcdir, "job.json"))
     except Exception as e:
         return f"错误：无法复制job.json文件 - {str(e)}"
-    shell_path = "/bin/zsh" if os.path.exists("/bin/zsh") else "/bin/bash"
+    shell_path = os.environ.get("SHELL", "")
 
     if shell_path == "/bin/zsh":
         command = f'cd {calcdir} && source ~/.zshrc && bohr job submit -i job.json -p ./'
@@ -160,7 +160,7 @@ async def monitor_vasp_job(
 
     while True:
         try:
-            shell_path = "/bin/zsh" if os.path.exists("/bin/zsh") else "/bin/bash"
+            shell_path = os.environ.get("SHELL", "")
             describe_cmd = f"bohr job describe -j {job_id} --json"
             if shell_path == "/bin/zsh":
                 proc = await asyncio.create_subprocess_exec(
@@ -188,7 +188,7 @@ async def monitor_vasp_job(
                 
                 # 下载结果文件
                 download_cmd = f"bohr job download -j {job_id}"
-                shell_path = "/bin/zsh" if os.path.exists("/bin/zsh") else "/bin/bash"
+                shell_path = os.environ.get("SHELL", "")
                 if shell_path == "/bin/zsh":
                     download_proc = await asyncio.create_subprocess_exec(
                         shell_path, "-i", "-c", download_cmd,
