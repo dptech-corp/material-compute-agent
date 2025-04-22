@@ -1,7 +1,7 @@
 ---XX.VT---
 %POSCAR=POSCAR     # 假设你已经生成好 POSCAR 文件
-%PSEUDO_DIR=/bohr/paperagent-vgwq/v4/science-agent-framework/VASPTemplates/potpaw54/potpaw_PBE/PAW_GGA_PBE/ #不用修改
-%POTCAR_ROOT=/bohr/paperagent-vgwq/v4/science-agent-framework/VASPTemplates/potpaw54/potpaw_PBE/ #不用修改
+%PSEUDO_DIR=VASPTemplates/potpaw54/potpaw_PBE/PAW_GGA_PBE/ #不用修改
+%POTCAR_ROOT=VASPTemplates/potpaw54/potpaw_PBE/ #不用修改
 
 %POT-Sr=Sr_sv
 %POT-Ca=Ca_sv

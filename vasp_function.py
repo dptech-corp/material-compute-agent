@@ -504,7 +504,7 @@ def search_poscar_template(formula: str):
     if len(msgs) == 0:
         raise ValueError("未能获取合适的结构模板。")
     
-    with open('/bohr/paperagent-vgwq/v4/science-agent-framework/prompt/format.txt', 'r') as file:
+    with open('prompt/format.txt', 'r') as file:
         vt_format = file.read()
     return {"poscar_template":msgs[0]["poscar_str"], "vt_format":vt_format}
 
