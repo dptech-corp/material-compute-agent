@@ -3,6 +3,14 @@ from pymatgen.io.vasp import Poscar
 import subprocess
 import re
 import os
+import json
+import re
+import warnings
+import requests
+from pymatgen.core import Lattice, Structure,Element
+from pymatgen.io.vasp.inputs import Poscar
+
+import openai
 
 def generate_vasp_config(calcdir):
     """
@@ -281,14 +289,6 @@ def write_vasp_report(xml_result: str):
 
 
 
-import json
-import re
-import warnings
-import requests
-from pymatgen.core import Lattice, Structure, Element
-from pymatgen.io.vasp.inputs import Poscar
-import openai
-
 class SimPleChat:
     
     def __init__(self, system="你是一个在晶体结构领域的专家"):
@@ -297,17 +297,17 @@ class SimPleChat:
         
 
         key_dict = dict(
-            DEEP_SEEK_BASE_URL="https://api.deepseek.com",
-            DEEP_SEEK_API_KEY=os.environ.get("DEEP_SEEK_API_KEY"),
+        DEEP_SEEK_BASE_URL = "https://api.deepseek.com",
+        DEEP_SEEK_API_KEY = os.environ.get("DEEP_SEEK_API_KEY"),
         )
+        
         assert key_dict.get("DEEP_SEEK_API_KEY", None) is not None, "Please set the DEEP_SEEK_API_KEY in environment."
         assert key_dict.get("DEEP_SEEK_BASE_URL", None) is not None, "Please set the DEEP_SEEK_BASE_URL in environment."
         self.client = openai.OpenAI(
             api_key=key_dict.get("DEEP_SEEK_API_KEY"),
             base_url=key_dict.get("DEEP_SEEK_BASE_URL"),
         )
-
-        self.model = key_dict.get("AZURE_MODEL_NAME")
+        self.model = key_dict.get("OPENAI_MODEL_NAME","deepseek-chat")
 
     def refresh(self):
         self.messages = [{"role": "system", "content": self.system}]
@@ -325,6 +325,7 @@ class SimPleChat:
         answer = self._ask(self.messages)
         self.messages.append({"role": "assistant", "content": str(answer)})
         return answer
+    
     
 
 def make_float(strs):
@@ -344,8 +345,9 @@ def download_mp(material_id):
     with MPRester(API_KEY) as mpr:
         # 获取晶体结构
         structure = mpr.get_structure_by_material_id(material_id)
-    os.environ['HTTP_PROXY'] = ''
-    os.environ['HTTPS_PROXY'] = ''
+
+    os.environ['HTTP_PROXY'] = None
+    
     return structure
 
 
@@ -409,8 +411,8 @@ def get_structure_dp_database(formula,space_group=None):
         data = response.json()  # Get the JSON response data
         # print("Response data:", data)
     else:
-        print(f"Request failed with status code {response.status_code}")
-        print("Response:", response.text)
+        # print(f"Request failed with status code {response.status_code}")
+        # print("Response:", response.text)
         raise Exception(f"Request failed with status code {response.status_code}")
     
     data = data.get("data", [])
@@ -460,8 +462,8 @@ def check_structure(structure,space_group=None):
     else:
         return True
     
-
-def search_poscar_template_once(formula: str):
+    
+def search_poscar_template(formula: str):
     """
     对化学式进行数据库匹配、超胞扩展、原子替换和吸附处理后返回POSCAR模板
 
@@ -496,9 +498,10 @@ def search_poscar_template_once(formula: str):
     }
     若原始化学式或分组后的化学式均无法符合已知材料配比，则每种元素均为单独位点。
     """
-
-    prompt2 = f"\n你需要分析的化学式为 {formula}"
-    res = ba.Q(prompt1+prompt2)
+    res = ba.Q(prompt1)
+    # print(res)
+    prompt2 = f"需要分析的化学式为 {formula}"
+    res = ba.Q(prompt2)
     # print(res)
     prompt3 = """
     将上述结果,按照各位点(A,B,C,...)配比的公约数尝试简化为最简整数配比,并分别将同位置的元素类别分别带入位点,获得多个不同的化学式及公约数。
@@ -517,11 +520,13 @@ def search_poscar_template_once(formula: str):
     }
     
     掺杂元素adsorb, 直接给出元素及配比信息。
-    注意: 只返回可以直接被json解析的结果字典,不要任何其他解释性信息。
+    注意：只返回结果字典,不要任何其他解释性信息。
     
     """
     res = ba.Q(prompt3)
-
+    # print(res)
+    prompt4 = "重新上述过程,检查两次结果一致性,只返回可以直接被json解析的结果字典,不要任何其他解释性信息。"
+    res  = ba.Q(prompt4)
     res = rep_string(res)
     res = json.loads(res)
     
@@ -546,9 +551,6 @@ def search_poscar_template_once(formula: str):
                 structure:Structure = mi.get("structure")
                 structure2 = structure.copy()
                 structure2 = structure2.make_supercell(sup.get(v))
-                
-                # Ensure all sites have the magmom property to avoid UserWarning
-
                 mi["structure"] = structure2
                 mi["space_group"] = structure2.get_space_group_info()
                 
@@ -556,10 +558,11 @@ def search_poscar_template_once(formula: str):
                     pass
                 else:
                     for bk,bv in base.items():
-                        bv.pop("all",None)
-                        if len(bv)<=1:
+                        if len(bv)==2:
+                            bv.pop("all",None)
                             pass
                         else:
+                            bv.pop("all",None)
                             names = list(bv.keys())
                             namess = []
                             for name,number in bv.items():
@@ -568,16 +571,15 @@ def search_poscar_template_once(formula: str):
 
                                 namess.extend([name]*int(number))
                                 
-                            names_all = structure2.labels
+                            names_all = structure2.symbol_set
                             
                             indexes = [i for i, name in enumerate(names_all) if name in names]
                             
-                            if len(indexes) != len(namess) or set(namess)==1:
+                            if len(indexes) != len(namess):
                                 pass
                             else:
                                 for i in range(len(indexes)):
-                                    # print("replace",indexes[i],namess[i])
-                                    structure2=structure2.replace(indexes[i], namess[i],)
+                                    structure2.replace(indexes[i], namess[i])
                 
                 if len(adsorb) != 0:
                     prompt5 = "吸附/掺杂元素种类及个数信息为："
@@ -617,7 +619,6 @@ def search_poscar_template_once(formula: str):
                 mi["fractional_coords"] = structure2.frac_coords.tolist()
                 mi["reference_formula"] = mi.pop("formula")
                 mi["reference_material_id"] = mi.pop("material_id")
-                
                 mi["poscar"] = Poscar(structure2)
                 mi["poscar_str"] = str(mi["poscar"])
                 
@@ -633,21 +634,7 @@ def search_poscar_template_once(formula: str):
 
 
 
-def search_poscar_template(formula: str, *, max_retries: int = 5):
-    """
-    对化学式进行数据库匹配、超胞扩展、原子替换和吸附处理后返回POSCAR模板
 
-    输入：化学式，比如"Sr5Ca3Fe8O24"
-    输出：POSCAR模板文件内容,和VASP输入文件格式
-    
-    """
-    for attempt in range(1, max_retries + 1):
-        try:
-            return search_poscar_template_once(formula)
-        except Exception as e:
-            if attempt == max_retries:
-                raise
-            time.sleep(1)
 
 
 
