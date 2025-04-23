@@ -470,7 +470,12 @@ def search_poscar_template(formula: str):
     对化学式进行数据库匹配、超胞扩展、原子替换和吸附处理后返回POSCAR模板
 
     输入：化学式，比如"Sr5Ca3Fe8O24"
-    输出：POSCAR模板文件内容,和VASP输入文件格式
+    输出：POSCAR模板文件内容，这里只是模板，需要博士生根据模板进行原子替换，确保结构中的所有原子种类、数量和分布都严格符合输入化学式。
+    输出格式：
+    {
+    "poscar_template":POSCAR模板文件内容,
+    "vt_format":VASP输入文件格式
+    }
 
     """
     # 1. 获得解析后的文献,问询大模型
