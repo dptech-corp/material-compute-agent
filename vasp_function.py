@@ -10,6 +10,7 @@ import requests
 from pymatgen.core import Lattice, Structure,Element
 from pymatgen.io.vasp.inputs import Poscar
 
+from pymatgen.io.cif import CifParser
 import openai
 
 def generate_vasp_config(calcdir):
@@ -297,8 +298,9 @@ class SimPleChat:
         
 
         key_dict = dict(
-        DEEP_SEEK_BASE_URL = "https://api.deepseek.com",
+        DEEP_SEEK_BASE_URL = os.environ.get("DEEP_SEEK_BASE_URL"),
         DEEP_SEEK_API_KEY = os.environ.get("DEEP_SEEK_API_KEY"),
+        DEEP_SEEK_MODEL_NAME = os.environ.get("DEEP_SEEK_MODEL_NAME"),
         )
         
         assert key_dict.get("DEEP_SEEK_API_KEY", None) is not None, "Please set the DEEP_SEEK_API_KEY in environment."
@@ -307,7 +309,7 @@ class SimPleChat:
             api_key=key_dict.get("DEEP_SEEK_API_KEY"),
             base_url=key_dict.get("DEEP_SEEK_BASE_URL"),
         )
-        self.model = key_dict.get("OPENAI_MODEL_NAME","deepseek-chat")
+        self.model = key_dict.get("DEEP_SEEK_MODEL_NAME","deepseek-chat")
 
     def refresh(self):
         self.messages = [{"role": "system", "content": self.system}]
@@ -335,34 +337,14 @@ def make_float(strs):
     else:
         return float(strs)
     
-def download_mp(material_id, max_retries=10, delay=2):
-    from pymatgen.ext.matproj import MPRester
-    import time
-
-    API_KEY = "msZce01AjFltxEu97whgD2TBdQYwdxhQ"
-    
-    for attempt in range(max_retries):
-        try:
-            # 设置代理
-            os.environ['HTTP_PROXY'] = 'http://114.115.170.192:8118'
-            os.environ['HTTPS_PROXY'] = 'http://114.115.170.192:8118'
-            
-            with MPRester(API_KEY) as mpr:
-                structure = mpr.get_structure_by_material_id(material_id)
-
-            return structure
-            
-        except Exception as e:
-            if attempt < max_retries - 1:  # 如果不是最后一次尝试
-                time.sleep(delay)  # 等待一段时间后重试
-            
-        finally:
-            if 'HTTP_PROXY' in os.environ:
-                del os.environ['HTTP_PROXY']
-            if 'HTTPS_PROXY' in os.environ:
-                del os.environ['HTTPS_PROXY']
-    
-    raise Exception(f"在 {max_retries} 次尝试后仍然无法下载 {material_id} 的结构数据")
+def map_local_cif(material_id):
+    mp_root_dir = os.getenv("MP_ROOT_DIR")
+    exact_name = f"{material_id}.cif"
+    exact_path = os.path.join(mp_root_dir, exact_name)
+    if os.path.isfile(exact_path):
+        return Structure.from_file(exact_path)
+    else:
+        raise FileNotFoundError(f"File {exact_path} not found.")
 
 
 def get_structure_mp_database(formula,space_group=None):
@@ -440,7 +422,7 @@ def get_structure_dp_database(formula,space_group=None):
         res["material_id"] =  item.get('material_id',"")
         
         # method 1
-        structure =  download_mp(item.get('material_id'))
+        structure =  map_local_cif(item.get('material_id'))
         
         res["structure"] = structure
         res_data.append(res)
