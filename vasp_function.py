@@ -290,47 +290,43 @@ def write_vasp_report(xml_result: str):
 
 
 
-import os
-from openai import AzureOpenAI
-
 class SimPleChat:
-    def __init__(self,
-                 system: str = "你是一个在晶体结构领域的专家",
-                 deployment_name: str = None):
-        # 系统提示
-        self.system = system
- 
-        self.client = AzureOpenAI(
-            azure_endpoint = os.environ["AZURE_OPENAI_BASE_URL"],
-            api_key        = os.environ.get("AZURE_OPENAI_KEY") or os.environ.get("OPENAI_API_KEY"),
-            api_version    = os.environ["AZURE_API_VERSION"]
-        )
-
-        # 部署名称（Deployment Name），即 Azure 门户里模型的 Deployment 名称
-        self.deployment = deployment_name or os.environ["AZURE_DEPLOYMENT_NAME"]
+    
+    def __init__(self, system="你是一个在晶体结构领域的专家"):
+        self.system =system
         self.refresh()
+        
+
+        key_dict = dict(
+        DEEP_SEEK_BASE_URL = os.environ.get("DEEP_SEEK_BASE_URL"),
+        DEEP_SEEK_API_KEY = os.environ.get("DEEP_SEEK_API_KEY"),
+        DEEP_SEEK_MODEL_NAME = os.environ.get("DEEP_SEEK_MODEL_NAME"),
+        )
+        
+        assert key_dict.get("DEEP_SEEK_API_KEY", None) is not None, "Please set the DEEP_SEEK_API_KEY in environment."
+        assert key_dict.get("DEEP_SEEK_BASE_URL", None) is not None, "Please set the DEEP_SEEK_BASE_URL in environment."
+        self.client = openai.OpenAI(
+            api_key=key_dict.get("DEEP_SEEK_API_KEY"),
+            base_url=key_dict.get("DEEP_SEEK_BASE_URL"),
+        )
+        self.model = key_dict.get("DEEP_SEEK_MODEL_NAME","deepseek-chat")
 
     def refresh(self):
-        # 重置对话，仅保留 system 提示
         self.messages = [{"role": "system", "content": self.system}]
 
-    def _ask(self, user_prompt: str) -> str:
-        # 添加用户消息
-        self.messages.append({"role": "user", "content": user_prompt})
-        resp = self.client.chat.completions.create(
-            model=self.deployment,    
-            messages=self.messages,
-            temperature=0.1,
-            max_tokens=2048,
-        )
-        answer = resp.choices[0].message.content
-        self.messages.append({"role": "assistant", "content": answer})
+    def _ask(self,msg):
+        chat_completion = self.client.chat.completions.create(model=self.model,
+                                                                messages=msg,
+                                                                response_format = {"type": "text"})
+        answer = chat_completion.choices[0].message.content
         return answer
 
-    def Q(self, question: str) -> str:
-        return self._ask(question)
 
-
+    def Q(self,question):
+        self.messages.append({"role": "user", "content": str(question)})
+        answer = self._ask(self.messages)
+        self.messages.append({"role": "assistant", "content": str(answer)})
+        return answer
     
     
 
@@ -343,7 +339,6 @@ def make_float(strs):
     
 def map_local_cif(material_id):
     mp_root_dir = os.getenv("MP_ROOT_DIR")
-
     exact_name = f"{material_id}.cif"
     exact_path = os.path.join(mp_root_dir, exact_name)
     if os.path.isfile(exact_path):
