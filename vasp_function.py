@@ -335,22 +335,34 @@ def make_float(strs):
     else:
         return float(strs)
     
-def download_mp(material_id):
+def download_mp(material_id, max_retries=10, delay=2):
     from pymatgen.ext.matproj import MPRester
+    import time
 
     API_KEY = "msZce01AjFltxEu97whgD2TBdQYwdxhQ"
-    os.environ['HTTP_PROXY'] = 'http://114.115.170.192:8118'
-    os.environ['HTTPS_PROXY'] = 'http://114.115.170.192:8118'
     
-    try:
-        with MPRester(API_KEY) as mpr:
-            structure = mpr.get_structure_by_material_id(material_id)
-    finally:
-        # 正确的方式删除环境变量
-        del os.environ['HTTP_PROXY']
-        del os.environ['HTTPS_PROXY']
+    for attempt in range(max_retries):
+        try:
+            # 设置代理
+            os.environ['HTTP_PROXY'] = 'http://114.115.170.192:8118'
+            os.environ['HTTPS_PROXY'] = 'http://114.115.170.192:8118'
+            
+            with MPRester(API_KEY) as mpr:
+                structure = mpr.get_structure_by_material_id(material_id)
+
+            return structure
+            
+        except Exception as e:
+            if attempt < max_retries - 1:  # 如果不是最后一次尝试
+                time.sleep(delay)  # 等待一段时间后重试
+            
+        finally:
+            if 'HTTP_PROXY' in os.environ:
+                del os.environ['HTTP_PROXY']
+            if 'HTTPS_PROXY' in os.environ:
+                del os.environ['HTTPS_PROXY']
     
-    return structure
+    raise Exception(f"在 {max_retries} 次尝试后仍然无法下载 {material_id} 的结构数据")
 
 
 def get_structure_mp_database(formula,space_group=None):
@@ -471,11 +483,7 @@ def search_poscar_template(formula: str):
 
     输入：化学式，比如"Sr5Ca3Fe8O24"
     输出：POSCAR模板文件内容，这里只是模板，需要博士生根据模板进行原子替换，确保结构中的所有原子种类、数量和分布都严格符合输入化学式。
-    输出格式：
-    {
-    "poscar_template":POSCAR模板文件内容,
-    "vt_format":VASP输入文件格式
-    }
+    
 
     """
     # 1. 获得解析后的文献,问询大模型
