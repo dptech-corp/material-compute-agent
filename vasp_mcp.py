@@ -143,17 +143,6 @@ async def rewrite_vasp_config(
         return {"error": f"重写{config}文件失败: {str(e)}"}
 
 
-    
-import asyncio
-import subprocess
-import os
-import json
-import zipfile
-from pydantic import Field
-from mcp.server.fastmcp import FastMCP
-
-mcp = FastMCP()
-
 @mcp.tool(name="monitor_vasp_job", description="监控VASP计算任务状态并下载结果")
 async def monitor_vasp_job(
     job_id: int = Field(description="VASP计算任务的ID编号")
@@ -224,6 +213,8 @@ async def monitor_vasp_job(
 
         except Exception as e:
             return f"❌ 发生未预期的错误：{str(e)}"
+
+
         
 if __name__ == "__main__":
     mcp.run(transport='sse')
