@@ -341,12 +341,14 @@ def download_mp(material_id):
     API_KEY = "msZce01AjFltxEu97whgD2TBdQYwdxhQ"
     os.environ['HTTP_PROXY'] = 'http://114.115.170.192:8118'
     os.environ['HTTPS_PROXY'] = 'http://114.115.170.192:8118'
-    # 下载结构并保存为 POSCAR 和 CIF 文件
-    with MPRester(API_KEY) as mpr:
-        # 获取晶体结构
-        structure = mpr.get_structure_by_material_id(material_id)
-
-    os.environ['HTTP_PROXY'] = None
+    
+    try:
+        with MPRester(API_KEY) as mpr:
+            structure = mpr.get_structure_by_material_id(material_id)
+    finally:
+        # 正确的方式删除环境变量
+        del os.environ['HTTP_PROXY']
+        del os.environ['HTTPS_PROXY']
     
     return structure
 
