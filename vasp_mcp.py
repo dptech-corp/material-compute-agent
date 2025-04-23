@@ -32,16 +32,28 @@ async def submit_vasp_job(
         Exception: 复制文件或提交任务失败时
     """
     if not os.path.exists(calcdir):
-        return "错误：计算目录不存在，请检查路径是否正确"
+        if not os.path.exists(os.path.join("material-compute-agent", calcdir)):
+            return "错误：计算目录不存在，请检查路径是否正确"
+        else:
+            calcdir = os.path.join("material-compute-agent", calcdir)
     
     try:
         shutil.copy("job.json", os.path.join(calcdir, "job.json"))
     except Exception as e:
         return f"错误：无法复制job.json文件 - {str(e)}"
 
-    command = f'cd {calcdir} && source ~/.bashrc && bohr job submit -i job.json -p ./'
+    bohr_path = subprocess.run(
+        ['which', 'bohr'], 
+        stdout=subprocess.PIPE, 
+        text=True
+    ).stdout.strip()
+    
+    if not bohr_path:
+        return "错误：找不到 bohr 命令，请确保已正确安装"
+        
+    command = f'cd {calcdir} && {bohr_path} job submit -i job.json -p ./'
     result = subprocess.run(
-        ['/bin/bash', '-c', command],
+        ['/bin/zsh', '-c', command],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True
