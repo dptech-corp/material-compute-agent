@@ -144,36 +144,45 @@ async def rewrite_vasp_config(
 
 
     
+import asyncio
+import subprocess
+import os
+import json
+import zipfile
+from pydantic import Field
+from mcp.server.fastmcp import FastMCP
+
+mcp = FastMCP()
+
 @mcp.tool(name="monitor_vasp_job", description="监控VASP计算任务状态并下载结果")
 async def monitor_vasp_job(
     job_id: int = Field(description="VASP计算任务的ID编号")
 ) -> str:
-    """监控VASP计算任务的执行状态并在完成后下载结果
-    
-    Args:
-        job_id (int): VASP计算任务的ID编号
-        
-    Returns:
-        str: 任务完成后返回结果文件路径或错误信息
-        
-    Raises:
-        Exception: 任务状态查询、下载或解压过程中的错误
-    """
+    """监控VASP计算任务的执行状态并在完成后下载结果"""
     print(f"🚀 开始监控任务 {job_id} 的执行状态...")
+
+    # 查找 bohr 路径
+    bohr_path = subprocess.run(
+        ['which', 'bohr'],
+        stdout=subprocess.PIPE,
+        text=True
+    ).stdout.strip()
+
+    if not bohr_path:
+        return "❌ 错误：找不到 bohr 命令，请确保已正确安装并在环境变量中"
 
     while True:
         try:
-            shell_path = os.environ.get("SHELL", "")
-            describe_cmd = f"bohr job describe -j {job_id} --json"
-
-            proc = await asyncio.create_subprocess_exec(
-                shell_path, "-c", describe_cmd,
+            # 查询任务状态
+            describe_proc = await asyncio.create_subprocess_exec(
+                bohr_path, "job", "describe", "-j", str(job_id), "--json",
                 stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE
+                stderr=asyncio.subprocess.PIPE,
+                env=os.environ.copy()
             )
-            stdout, stderr = await proc.communicate()
+            stdout, stderr = await describe_proc.communicate()
 
-            if proc.returncode != 0:
+            if describe_proc.returncode != 0:
                 return f"❌ 状态查询失败：{stderr.decode().strip()}"
 
             job_info = json.loads(stdout.decode())[0]
@@ -182,38 +191,37 @@ async def monitor_vasp_job(
 
             if status == "Finished":
                 print("✅ 任务完成，开始下载结果")
-                
-                # 下载结果文件
-                download_cmd = f"bohr job download -j {job_id}"
 
+                # 下载任务结果
                 download_proc = await asyncio.create_subprocess_exec(
-                    shell_path, "-c", download_cmd,
+                    bohr_path, "job", "download", "-j", str(job_id),
                     stdout=asyncio.subprocess.PIPE,
-                    stderr=asyncio.subprocess.PIPE
+                    stderr=asyncio.subprocess.PIPE,
+                    env=os.environ.copy()
                 )
-                
                 out, err = await download_proc.communicate()
 
-                if download_proc.returncode == 0:
-                    # 解压结果文件
-                    zip_path = f"{job_id}/out.zip"
-                    extract_dir = f"{job_id}/out"
-                    os.makedirs(extract_dir, exist_ok=True)
-                    
-                    try:
-                        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-                            zip_ref.extractall(extract_dir)
-                        return f"✅ 结果已下载并解压，vasprun.xml路径：{os.path.join(extract_dir, 'vasprun.xml')}"
-                    except Exception as e:
-                        return f"❌ 结果文件解压失败：{str(e)}"
-                else:
-                    return f"❌ 结果下载失败：{err.decode()}"
+                if download_proc.returncode != 0:
+                    return f"❌ 结果下载失败：{err.decode().strip()}"
+
+                # 解压下载结果
+                base_dir = os.getcwd()
+                zip_path = os.path.join(base_dir, f"{job_id}/out.zip")
+                extract_dir = os.path.join(base_dir, f"{job_id}/out")
+                os.makedirs(extract_dir, exist_ok=True)
+
+                try:
+                    with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+                        zip_ref.extractall(extract_dir)
+                    return f"✅ 结果已下载并解压，vasprun.xml路径：{os.path.join(extract_dir, 'vasprun.xml')}"
+                except Exception as e:
+                    return f"❌ 结果文件解压失败：{str(e)}"
 
             elif status in ["Failed", "Terminated"]:
                 return f"⚠️ 任务异常终止（状态：{status}）"
 
             await asyncio.sleep(10)
-            
+
         except Exception as e:
             return f"❌ 发生未预期的错误：{str(e)}"
         
