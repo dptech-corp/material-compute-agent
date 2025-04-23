@@ -290,34 +290,35 @@ def write_vasp_report(xml_result: str):
 
 
 
+import os
+from openai import AzureOpenAI
+
 class SimPleChat:
     def __init__(self,
                  system: str = "你是一个在晶体结构领域的专家",
                  deployment_name: str = None):
         # 系统提示
         self.system = system
+ 
+        self.client = AzureOpenAI(
+            azure_endpoint = os.environ["AZURE_OPENAI_BASE_URL"],
+            api_key        = os.environ.get("AZURE_OPENAI_KEY") or os.environ.get("OPENAI_API_KEY"),
+            api_version    = os.environ["AZURE_API_VERSION"]
+        )
 
-        api_key = os.environ.get("AZURE_OPENAI_API_KEY") 
-        openai.api_key = api_key
-        openai.api_type = "azure"
-        openai.api_base = os.environ.get("AZURE_OPENAI_BASE_URL")
-        openai.api_version = os.environ.get("AZURE_API_VERSION")
-        assert openai.api_base, "Please set AZURE_OPENAI_BASE_URL in environment."
-        assert openai.api_version, "Please set AZURE_API_VERSION in environment."
-
-        self.deployment_name = deployment_name or os.environ.get("AZURE_DEPLOYMENT_NAME")
-        assert self.deployment_name, "Please set AZURE_DEPLOYMENT_NAME in environment."
-
+        # 部署名称（Deployment Name），即 Azure 门户里模型的 Deployment 名称
+        self.deployment = deployment_name or os.environ["AZURE_DEPLOYMENT_NAME"]
         self.refresh()
 
     def refresh(self):
+        # 重置对话，仅保留 system 提示
         self.messages = [{"role": "system", "content": self.system}]
 
     def _ask(self, user_prompt: str) -> str:
         # 添加用户消息
         self.messages.append({"role": "user", "content": user_prompt})
-        resp = openai.ChatCompletion.create(
-            engine=self.deployment_name,
+        resp = self.client.chat.completions.create(
+            model=self.deployment,    
             messages=self.messages,
             temperature=0.1,
             max_tokens=2048,
@@ -326,12 +327,10 @@ class SimPleChat:
         self.messages.append({"role": "assistant", "content": answer})
         return answer
 
+    def Q(self, question: str) -> str:
+        return self._ask(question)
 
-    def Q(self,question):
-        self.messages.append({"role": "user", "content": str(question)})
-        answer = self._ask(self.messages)
-        self.messages.append({"role": "assistant", "content": str(answer)})
-        return answer
+
     
     
 
