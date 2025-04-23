@@ -31,10 +31,10 @@ async def submit_vasp_job(
         FileNotFoundError: 当目录不存在或无法访问时
         Exception: 复制文件或提交任务失败时
     """
-    print(os.getcwd())
+    current_dir = os.getcwd()
     if not os.path.exists(calcdir):
         if not os.path.exists(os.path.join("material-compute-agent", calcdir)):
-            return "错误：计算目录不存在，请检查路径是否正确"
+            return f"当前路径：{current_dir}，错误：计算目录不存在，请检查路径是否正确"
         else:
             calcdir = os.path.join("material-compute-agent", calcdir)
     
