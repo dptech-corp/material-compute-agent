@@ -217,4 +217,5 @@ async def monitor_vasp_job(
 
         
 if __name__ == "__main__":
+    print("start run mcp server")
     mcp.run(transport='sse')

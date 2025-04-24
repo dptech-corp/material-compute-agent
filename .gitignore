@@ -1,0 +1,7 @@
+__pycache__
+__MACOSX
+.env
+.venv
+*.egg-info
+mp_materials_cif
+mp_materials_cif.zip
