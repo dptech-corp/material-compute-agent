@@ -5,4 +5,4 @@ __MACOSX
 *.egg-info
 mp_materials_cif
 mp_materials_cif.zip
-.ipynb
+*.ipynb
