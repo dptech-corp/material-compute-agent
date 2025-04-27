@@ -1,55 +1,107 @@
-# Paper-Reproduce-Agent
+# Bohr Science Agent Framework
 
-基于CAMEL框架的论文复现智能助手，专注于VASP计算的自动化配置生成。
+基于 CAMEL 框架的科学计算智能助手，专注于材料计算和 VASP 配置的自动化生成。
 
 ## 项目简介
 
-本项目是一个智能论文复现系统，通过AI代理（Agents）自动化处理VASP计算的配置生成过程。系统包含两个主要角色：
-- 博士生代理：负责阅读论文并生成VASP配置
-- 导师代理：负责验证配置的正确性
+本项目是一个智能科学计算系统，通过 AI 代理（Agents）自动化处理材料计算和 VASP 配置生成过程。系统主要功能包括：
 
-## 功能特点
+- 自动解析材料结构和计算参数
+- 智能生成 VASP 输入文件
+- 结构验证和优化
+- 计算结果分析和报告生成
 
-- 自动解析PDF格式的论文
-- 智能提取实验参数和配置信息
-- 自动生成VASP输入文件（POSCAR和配置文件）
-- 实时验证配置的正确性
-- 支持多轮交互式修正
+## 技术架构
 
+- 基于 CAMEL 多智能体框架
+- 集成 science-agent-sdk 工具包
+- 使用 pymatgen 进行材料结构处理
+- 支持多种数据库查询（Materials Project, DP Database）
 
-## 使用方法
+## 主要功能
 
-1. 准备论文PDF文件
-2. 运行主程序
+1. VASP 配置生成
+   - 自动生成 VASP 输入文件
+   - 支持多种计算类型
+   - 参数自动验证
+
+2. 结构处理
+   - CIF 文件解析
+   - 结构优化
+   - 空间群验证
+
+3. 计算结果分析
+   - vasprun.xml 解析
+   - 能带结构分析
+   - 自动报告生成
+
+## 安装方法
+
+1. 克隆项目并初始化子模块
 ```bash
-python paper_agent_workforce.py
+git clone --recursive https://github.com/yourusername/bohr-science-agent-framework.git
+cd bohr-science-agent-framework
+```
+
+2. 创建并激活虚拟环境
+```bash
+conda create -n bohr-agent python=3.8
+conda activate bohr-agent
+```
+
+3. 安装依赖
+```bash
+pip install -e .
+```
+
 ```
 
 ## 项目结构
 
 ```
 .
-├── paper_agent_workforce.py   # 主程序文件
-├── vasp_function.py          # VASP相关功能函数
-├── prompt/                   # 提示词模板
-│   ├── paper_prompt.txt      # 博士生角色提示词
-│   └── check_prompt.txt      # 导师角色提示词
-├── VASPTemplates/            # VASP模板文件
-└── CALC/                     # 计算结果目录
+├── vasp_function.py     # VASP 相关功能函数
+├── server/              # 服务器端代码
+├── camel/              # CAMEL 框架（子模块）
+├── science-agent-sdk/  # SDK 工具包（子模块）
+├── VASPTemplates/      # VASP 模板文件
+└── prompt/            # 提示词模板
 ```
 
-## 核心功能
+## 依赖说明
 
-1. PDF解析（`read_pdf`）
-   - 自动提取PDF文本内容
-   - 按页面组织信息
+- Python >= 3.8
+- pymatgen
+- openai
+- pandas >= 2.2.2
+- camel-ai
+- 其他依赖见 setup.py
 
-2. VASP配置生成（`generate_vasp_input`）
-   - 生成POSCAR文件
-   - 生成配置文件
-   - 参数自动验证
+## 开发说明
 
-3. 配置验证（`generate_vasp_config`）
-   - 检查参数合理性
-   - 验证格式正确性
+1. 子模块管理
+```bash
+# 更新子模块
+git submodule update --remote
+
+# 切换子模块分支
+cd camel
+git checkout <branch_name>
+cd ..
+```
+
+2. 代码提交
+```bash
+# 提交主项目更改
+git add .
+git commit -m "your message"
+
+# 提交子模块更改
+cd camel
+git add .
+git commit -m "update camel"
+cd ..
+git add camel
+git commit -m "update camel submodule"
+```
 
