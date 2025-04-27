@@ -67,3 +67,16 @@ pip install -e .
 ├── VASPTemplates/      # VASP 模板文件
 └── prompt/            # 提示词模板
 ```
+
+## 依赖说明
+
+- Python >= 3.8
+- pymatgen
+- openai
+- pandas >= 2.2.2
+- camel-ai
+- 其他依赖见 setup.py
+
+
+```
+
