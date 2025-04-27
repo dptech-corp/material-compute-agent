@@ -92,6 +92,17 @@ output format:
 </tasks>
 ==============================
 
+if human reply with "任务设置为", you should return the human define subtasks  like this:
+
+==============================
+output format:
+==============================
+<tasks>
+<task>Subtask 1</task>
+<task>Subtask 2</task>
+</tasks>
+==============================
+
 
 """
 

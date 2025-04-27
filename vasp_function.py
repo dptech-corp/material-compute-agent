@@ -1,4 +1,4 @@
-from pymatgen.core import Lattice, Structure
+from pymatgen.core import Structure
 from pymatgen.io.vasp import Poscar
 import subprocess
 import re
@@ -9,9 +9,10 @@ import warnings
 import requests
 from pymatgen.core import Lattice, Structure,Element
 from pymatgen.io.vasp.inputs import Poscar
-
-from pymatgen.io.cif import CifParser
 import openai
+from PyPDF2 import PdfReader
+import time
+import xml.etree.ElementTree as ET
 
 def generate_vasp_config(calcdir):
     """
@@ -56,13 +57,14 @@ def write_vasp_config(vt_config: str, calcdir: str):
     with open("test.vt", "w") as f:
         f.write(vt_config)
     
+    os.makedirs("tmp", exist_ok=True)
+    calcdir = os.path.join("tmp", calcdir)
     generate_vasp_config(calcdir)
     os.remove("test.vt")
     os.remove("POSCAR")
     return f"VASP输入文件已生成,实验验证成功，calcdir是{calcdir}"
 
-from PyPDF2 import PdfReader
-import time
+
 def read_vasp_pdf(pdf_path:str):
     """
     读取VASP的PDF文件
@@ -85,7 +87,7 @@ def read_vasp_pdf(pdf_path:str):
     return pdf_text
 
 
-import xml.etree.ElementTree as ET
+
 
 class VasprunParser:
     def __init__(self, path):
@@ -134,7 +136,6 @@ class VasprunParser:
             if name is not None:
                 result.append((name, item.text.split()))
             else:
-                # 你可以选择跳过或加个标记，例如：
                 result.append(("unnamed_v", item.text.split()))
         
         return result
@@ -211,70 +212,76 @@ class VasprunParser:
     
 
 
-def analyze_vasprun_all(xml_path: str):
+def analyze_vasprun_all():
     """
     分析VASP计算结果，用于完成实验报告
-    输入：xml_path，VASP计算结果路径
-    输出：VASP计算结果分析
+    输出：VASP计算结果分析, 每个计算结果是一个字典, 包含计算结果的分析信息
     """
-    parser = VasprunParser(xml_path)
-    result = {}
-    try:
-        result["generator"] = parser.generator()
-    except Exception as e:
-        result["generator"] = f"Failed to parse generator info: {e}"
+    out_path = "server/tmp"
+    experiment_path = os.listdir(out_path)
+    result_list = []
+    for path in experiment_path:
+        path = os.path.join(out_path,path)
+        xml_path = os.path.join(path,"vasprun.xml")
+        parser = VasprunParser(xml_path)
+        result = {}
+        try:
+            result["generator"] = parser.generator()
+        except Exception as e:
+            result["generator"] = f"Failed to parse generator info: {e}"
 
-    try:
-        result["incar"] = parser.incar()
-    except Exception as e:
-        result["incar"] = f"Failed to parse INCAR: {e}"
+        try:
+            result["incar"] = parser.incar()
+        except Exception as e:
+            result["incar"] = f"Failed to parse INCAR: {e}"
 
-    try:
-        result["kpoints_grid"] = parser.monkhorst_pack()
-    except Exception as e:
-        result["kpoints_grid"] = f"Failed to parse K-points grid: {e}"
+        try:
+            result["kpoints_grid"] = parser.monkhorst_pack()
+        except Exception as e:
+            result["kpoints_grid"] = f"Failed to parse K-points grid: {e}"
 
-    try:
-        result["kpoints_list"] = parser.kpoints_list()
-    except Exception as e:
-        result["kpoints_list"] = f"Failed to parse K-points list: {e}"
+        try:
+            result["kpoints_list"] = parser.kpoints_list()
+        except Exception as e:
+            result["kpoints_list"] = f"Failed to parse K-points list: {e}"
 
-    try:
-        weights = parser.kpoints_weight()
-        result["kpoints_weight"] = weights if weights else "No weight info (likely Gamma or auto K-points)"
-    except Exception as e:
-        result["kpoints_weight"] = f"Failed to parse K-points weight: {e}"
+        try:
+            weights = parser.kpoints_weight()
+            result["kpoints_weight"] = weights if weights else "No weight info (likely Gamma or auto K-points)"
+        except Exception as e:
+            result["kpoints_weight"] = f"Failed to parse K-points weight: {e}"
 
-    try:
-        result["parameters"] = parser.parameters()
-    except Exception as e:
-        result["parameters"] = f"Failed to parse parameters: {e}"
+        try:
+            result["parameters"] = parser.parameters()
+        except Exception as e:
+            result["parameters"] = f"Failed to parse parameters: {e}"
 
-    try:
-        result["atoms_info"] = parser.atoms_info()
-    except Exception as e:
-        result["atoms_info"] = f"Failed to parse atom info: {e}"
+        try:
+            result["atoms_info"] = parser.atoms_info()
+        except Exception as e:
+            result["atoms_info"] = f"Failed to parse atom info: {e}"
 
-    try:
-        result["structure"] = parser.structure()
-    except Exception as e:
-        result["structure"] = f"Failed to parse structure: {e}"
+        try:
+            result["structure"] = parser.structure()
+        except Exception as e:
+            result["structure"] = f"Failed to parse structure: {e}"
 
-    try:
-        calc_res, calc_pos, calc_forces = parser.calculation()
-        calc_summary = []
-        for step_id, (r, p, f) in enumerate(zip(calc_res, calc_pos, calc_forces)):
-            calc_summary.append({
-                "step": step_id,
-                "properties": r[:3],  # limit for brevity
-                "first_2_positions": p[:2],
-                "first_2_forces": f[:2]
-            })
-        result["calculation_steps"] = calc_summary
-    except Exception as e:
-        result["calculation_steps"] = f"Failed to parse calculation steps: {e}"
+        try:
+            calc_res, calc_pos, calc_forces = parser.calculation()
+            calc_summary = []
+            for step_id, (r, p, f) in enumerate(zip(calc_res, calc_pos, calc_forces)):
+                calc_summary.append({
+                    "step": step_id,
+                    "properties": r[:3],  # limit for brevity
+                    "first_2_positions": p[:2],
+                    "first_2_forces": f[:2]
+                })
+            result["calculation_steps"] = calc_summary
+        except Exception as e:
+            result["calculation_steps"] = f"Failed to parse calculation steps: {e}"
+        result_list.append(result)
 
-    return result
+    return result_list
 
 
 def write_vasp_report(xml_result: str):
@@ -630,11 +637,6 @@ def search_poscar_template(formula: str):
     return {"poscar_template":msgs[0]["poscar_str"], "vt_format":vt_format}
 
 
-
-
-
-
-
 def write_poscar(final_poscar: str):
     """
     用于从模板中搜索，并进行原子替换，返回满足要求的用于VASP计算的POSCAR文件内容
@@ -646,18 +648,88 @@ def write_poscar(final_poscar: str):
     return final_poscar
 
 
+def show_vasp_config(
+    calcdir: str
+) -> dict:
+    """向人类展示显示VASP计算的关键输入配置文件内容
+    
+    Args:
+        calcdir (str): 计算目录的完整路径
+        
+    Returns:
+        dict: 包含INCAR和POSCAR文件内容的字典
+        
+    Raises:
+        FileNotFoundError: 当目录或配置文件不存在时
+    """
+    if not os.path.exists(calcdir):
+        calcdir = os.path.join("tmp", calcdir)
+        if not os.path.exists(calcdir):
+            return {"error": "计算目录不存在"}
+        
+    result = {}
+    for config in ["INCAR"]:
+        config_path = os.path.join(calcdir, config)
+        if os.path.exists(config_path):
+            with open(config_path, "r") as f:
+                result[config] = f.read()
+        else:
+            result[config] = f"错误：{config}文件不存在"
+    return result
+
+
+
 def check_vasp_input(calcdir: str):
     """
     用于检查VASP输入文件是否存在
     输入：calcdir，计算目录路径
     输出：文件是否存在
     """
-    if os.path.exists(calcdir):
-        return "🎉所有配置文件均已生成"
-    else:
-        if os.path.exists("POSCAR"):
-            return "🚫POSCAR文件不存在"
-        if os.path.exists(os.path.join(calcdir, "XX.VT")):
-            return "🚫XX.VT文件不存在"
-        return "🚫所有配置文件均不存在"
+    if not os.path.exists(calcdir):
+        calcdir = os.path.join("tmp", calcdir)
+        if not os.path.exists(calcdir):
+            return {"error": "计算目录不存在"}
+    
+    return {"success": True, "message": f"计算目录存在,位置在{calcdir}"}
 
+
+def rewrite_vasp_config(
+    calcdir: str,
+    config: str,
+    new_content: str
+) -> dict:
+    """
+    重写VASP计算的关键输入配置文件内容
+
+    Args:
+        calcdir (str): 计算目录的完整路径，应该包含VASP的配置文件（如INCAR、POSCAR）。
+        config (str): 要重写的配置文件名称，例如 'INCAR' 或 'POSCAR'。
+        new_content (str): 用于重写的新的配置文件内容。
+
+    Returns:
+        dict: 操作结果的字典。如果成功，返回成功消息；否则返回错误说明。
+
+    Raises:
+        FileNotFoundError: 当目录或指定配置文件不存在时。
+    """
+    # 检查计算目录是否存在
+    if not os.path.exists(calcdir):
+        calcdir = os.path.join("tmp", calcdir)
+        if not os.path.exists(calcdir):
+            return {"error": "计算目录不存在"}
+
+    
+    # 构造目标配置文件的完整路径
+    config_path = os.path.join(calcdir, config)
+    
+    # 如果目标配置文件不存在，则返回错误信息
+    if not os.path.exists(config_path):
+        return {"error": f"错误：{config}文件不存在"}
+    
+    # 尝试重写该配置文件
+    try:
+        with open(config_path, "w") as f:
+            f.write(new_content)
+        return {"success": True, "message": f"{config}文件已成功重写", "new_content": new_content}
+    except Exception as e:
+        return {"error": f"重写{config}文件失败: {str(e)}"}

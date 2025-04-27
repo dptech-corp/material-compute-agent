@@ -20,11 +20,13 @@ from urllib.parse import urlparse
 if TYPE_CHECKING:
     from mcp import ClientSession, ListToolsResult, Tool
 
-from camel_sci.logger import get_logger
-from camel_sci.toolkits.mcp_toolkit import MCPToolkit, MCPClient
+from camel.logger import get_logger
+from camel.toolkits.mcp_toolkit import MCPClient
+import functools
+
 logger = get_logger(__name__)
 
-class DPMCPClient(MCPClient):
+class CalculationMCPClient(MCPClient):
     def __init__(
         self,
         command_or_url: str,
