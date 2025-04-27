@@ -54,20 +54,6 @@ conda activate bohr-agent
 pip install -e .
 ```
 
-```
-
-## 项目结构
-
-```
-.
-├── vasp_function.py     # VASP 相关功能函数
-├── server/              # 服务器端代码
-├── camel/              # CAMEL 框架（子模块）
-├── science-agent-sdk/  # SDK 工具包（子模块）
-├── VASPTemplates/      # VASP 模板文件
-└── prompt/            # 提示词模板
-```
-
 ## 依赖说明
 
 - Python >= 3.8
@@ -77,31 +63,6 @@ pip install -e .
 - camel-ai
 - 其他依赖见 setup.py
 
-## 开发说明
 
-1. 子模块管理
-```bash
-# 更新子模块
-git submodule update --remote
-
-# 切换子模块分支
-cd camel
-git checkout <branch_name>
-cd ..
-```
-
-2. 代码提交
-```bash
-# 提交主项目更改
-git add .
-git commit -m "your message"
-
-# 提交子模块更改
-cd camel
-git add .
-git commit -m "update camel"
-cd ..
-git add camel
-git commit -m "update camel submodule"
 ```
 
