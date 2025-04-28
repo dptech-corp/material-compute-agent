@@ -10,3 +10,4 @@ job.json
 camel/
 .DS_Store
 dpdispatcher.log
+science-agent-sdk
