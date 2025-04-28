@@ -106,7 +106,7 @@ output format:
 
 """
 
-class DPWorkforce(Workforce):
+class CalculationWorkforce(Workforce):
     r"""A system where multiple workder nodes (agents) cooperate together
     to solve tasks. It can assign tasks to workder nodes and also take
     strategies such as create new worker, decompose tasks, etc. to handle

@@ -18,7 +18,7 @@ setup(
         "tiktoken",
         "sqlalchemy",
         "googlemaps",
-        # "camel-ai[model_platforms]",
+        "camel-ai[model_platforms]",
         'colorama',
     ],
     author="Lin Hang",
