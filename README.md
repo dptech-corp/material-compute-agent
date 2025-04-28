@@ -57,7 +57,7 @@ pip install -e .
 
 ## 依赖说明
 
-- Python >= 3.8
+- Python >= 3.11
 - pymatgen
 - openai
 - pandas >= 2.2.2
