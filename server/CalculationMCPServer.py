@@ -1,4 +1,4 @@
-from dp.agent.adapter.camel.server import CalculationMCPServer
+from dp.agent.adapter.camel.server.CalculationMCPServer import CalculationMCPServer
 import subprocess
 import os   
 import time
