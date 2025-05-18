@@ -19,7 +19,9 @@ setup(
         "sqlalchemy",
         "googlemaps",
         "camel-ai[model_platforms]",
-        'colorama',
+        "colorama",
+        "google-adk",
+        "litellm"
     ],
     author="Lin Hang",
     author_email="linhang@dp.tech",

@@ -4,44 +4,60 @@ import os
 import time
 mcp = CalculationMCPServer("Demo")
 
-@mcp.tool()
 
-def vasp_job() -> str:
-    """提交VASP计算任务
-        
+@mcp.tool()
+def vasp_job() -> dict:
+    """
+    Submit VASP calculation jobs in each subdirectory under the 'tmp' folder.
+
+    This function changes the current working directory to 'tmp', locates all subdirectories,
+    and runs the VASP job in each one by executing a shell command. After execution,
+    it returns to the original directory.
+
     Returns:
-        str: 提交成功返回任务ID，失败返回错误信息
-        
+        dict: A dictionary with 'status' and 'message'. Returns success if all jobs are launched.
+              On failure, raises an exception with error details.
+
     Raises:
-        FileNotFoundError: 当目录不存在或无法访问时
-        Exception: 复制文件或提交任务失败时
+        FileNotFoundError: If the 'tmp' directory does not exist or cannot be accessed.
+        Exception: If no subdirectories are found or if job execution fails.
+
+    Example:
+        result = vasp_job()
+        e.g., "All jobs submitted successfully 🎉"
     """
     start_dir = os.getcwd()
+
     try:
         os.chdir('tmp')
-        
+
         subdirs = [d for d in os.listdir() if os.path.isdir(d)]
         if not subdirs:
-            raise Exception("tmp目录下没有子目录")
-        
-        for subdir in subdirs:
-            print(f"开始在子目录 {subdir} 中执行VASP...")
-            os.chdir(subdir)
-            
-            command = "source /opt/intel/oneapi/setvars.sh && mpirun -n 32 vasp_std > vasp.log 2>&1"
-            subprocess.run(['bash', '-c', command], check=True)
-            
-            os.chdir('..')
-            print(f"子目录 {subdir} 执行完成")
-        
-    except Exception as e:
-        print(f"执行出错: {e}")
-        raise
-    finally:
+            raise Exception("No subdirectories found in 'tmp' for VASP jobs.")
 
+        for subdir in subdirs:
+            print(f"Launching VASP in subdirectory: {subdir}...")
+            os.chdir(subdir)
+
+            # Customize this command to your HPC environment
+            command = (
+                "source /opt/intel/oneapi/setvars.sh && "
+                "mpirun -n 32 vasp_std > vasp.log 2>&1"
+            )
+
+            subprocess.run(['bash', '-c', command], check=True)
+            os.chdir('..')
+            print(f"Finished executing in: {subdir}")
+
+    except Exception as e:
+        print(f"Execution failed: {e}")
+        raise
+
+    finally:
         os.chdir(start_dir)
-    return {"status": "success", "message": "任务提交成功🎉"}
+
+    return {"status": "success", "message": "All VASP jobs submitted successfully 🎉"}
+
 
 if __name__ == "__main__":
-
     mcp.run(transport="sse")

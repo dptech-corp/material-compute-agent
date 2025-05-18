@@ -49,7 +49,7 @@ EDIFFG = -0.01            # Force convergence criterion (0.01 eV/Å)
 # Electronic
 ISMEAR = 0               # Gaussian smearing
 SIGMA  = 0.1             # Smearing width
-NELM   = 200             # Max electronic steps
+NELM   = 2             # Max electronic steps
 
 #------------------------#
 # Magnetic moment
