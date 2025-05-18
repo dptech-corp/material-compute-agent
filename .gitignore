@@ -5,7 +5,7 @@ __MACOSX
 *.egg-info
 mp_materials_cif
 mp_materials_cif.zip
-*.ipynb
+lh_test.ipynb
 job.json
 camel/
 .DS_Store
