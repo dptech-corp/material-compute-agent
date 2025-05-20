@@ -21,7 +21,8 @@ setup(
         "camel-ai[model_platforms]",
         "colorama",
         "google-adk",
-        "litellm"
+        "litellm",
+        "lbg"
     ],
     author="Lin Hang",
     author_email="linhang@dp.tech",

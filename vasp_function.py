@@ -226,7 +226,6 @@ def write_vasp_report(xml_result: str) -> str:
 
     return "Report written to experiment_report.txt"
 
-
 def search_poscar_template(formula: str) -> str:
     """
     Search for a POSCAR template based on the given chemical formula.
