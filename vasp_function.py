@@ -1,5 +1,3 @@
-from pymatgen.core import Structure
-from pymatgen.io.vasp import Poscar
 import subprocess
 import re
 import os
@@ -82,7 +80,12 @@ def write_vasp_config(vt_config: str, calcdir: str) -> str:
     # Generate VASP input files
     generate_vasp_config(calcdir_path)
 
-    # Clean up intermediate file
+    try:
+        status = check_vasp_input(calcdir_path)
+        if not status["success"]:
+            raise ValueError(status["message"])
+    except Exception as e:
+        return f"Failed to generate VASP input files: {e}, please check if the POSCAR has been adjusted to the correct format and write the POSCAR file again"
 
     return f"VASP input files generated successfully. calcdir: {calcdir_path}"
 
@@ -143,6 +146,8 @@ def analyze_vasprun_all() -> list:
 
     for path in experiment_path:
         path = os.path.join(out_path, path)
+        if not os.path.exists(path):
+            raise ValueError(f"Calculation directory {path} does not exist, Please check if the calculation is finished or you have submitted the calculation")
         xml_path = os.path.join(path, "vasprun.xml")
 
         parser = VasprunParser(xml_path)
@@ -269,7 +274,9 @@ def write_poscar(final_poscar: str) -> str:
         Poscar(structure).write_file("POSCAR")
         return final_poscar
     except Exception as e:
-        return f"Failed to write POSCAR: {e}"
+        with open('prompt/POSCAR_template', 'r') as f:
+            POSCAR_template = f.read()
+        return f"Failed to write POSCAR: {e}, because the POSCAR is not in the correct format, here is a template for you to adjust: {POSCAR_template}"
 
 def show_vasp_config(calcdir: str) -> dict:
     """
