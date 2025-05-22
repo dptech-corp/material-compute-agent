@@ -245,6 +245,7 @@ def search_poscar_template(formula: str) -> str:
 
     Returns:
         str: The content of a POSCAR template file.
+        vt_format: The format of the VT template file.
 
     Example:
         template = search_poscar_template("Sr5Ca3Fe8O24")

@@ -6,7 +6,7 @@ mcp = CalculationMCPServer("Demo")
 
 
 @mcp.tool()
-def submit_vasp_job() -> dict:
+def vasp_job() -> dict:
     """
     Submit VASP calculation jobs in each subdirectory under the 'tmp' folder.
 
@@ -53,10 +53,8 @@ def submit_vasp_job() -> dict:
         os.chdir(start_dir)
         log = open("log", "r").read()
         return {"status": "error", "message": f"Failed to submit VASP jobs: {e}\n{log}"}
-
     finally:
-
-
+        os.chdir(start_dir)
     return {"status": "success", "message": "All VASP jobs submitted successfully 🎉"}
 
 
