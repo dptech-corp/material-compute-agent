@@ -18,7 +18,7 @@ setup(
         "tiktoken",
         "sqlalchemy",
         "googlemaps",
-        "camel-ai[model_platforms]",
+        "camel-ai==0.2.49",
         "colorama",
         "google-adk==0.5.0",
         "litellm",
