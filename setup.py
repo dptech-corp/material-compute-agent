@@ -20,7 +20,7 @@ setup(
         "googlemaps",
         "camel-ai==0.2.49",
         "colorama",
-        "google-adk==0.5.0",
+        "google-adk",
         "litellm",
         "lbg"
     ],

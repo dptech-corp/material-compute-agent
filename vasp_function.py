@@ -63,7 +63,7 @@ def write_vasp_config(vt_config: str, calcdir: str) -> str:
     if vt_match:
         vt_content = vt_match.group(1).strip()
     else:
-        raise ValueError("Failed to find xx.vt configuration content in the provided string.")
+        return "Failed to find xx.vt configuration content in the provided string."
 
     # Clean and write configuration lines to "test.vt"
     lines = vt_content.split("\n")
@@ -83,7 +83,7 @@ def write_vasp_config(vt_config: str, calcdir: str) -> str:
     try:
         status = check_vasp_input(calcdir_path)
         if not status["success"]:
-            raise ValueError(status["message"])
+            return "vasp input files generation failed"
     except Exception as e:
         return f"Failed to generate VASP input files: {e}, please check if the POSCAR has been adjusted to the correct format and write the POSCAR file again"
 
@@ -140,14 +140,29 @@ def analyze_vasprun_all() -> list:
         for res in results:
             print(res["generator"])
     """
-    out_path = "server/tmp"
-    experiment_path = os.listdir(out_path)
+    
+    base_path = "server/"
+    folders = [f for f in os.listdir(base_path) if os.path.isdir(os.path.join(base_path, f))]
+    print(folders)
+    if not folders:
+        return f"No calculation results found, please check if the calculation is finished or you have submitted the calculation"
+    out_path = os.path.join(base_path, folders[0])
+    
+    out_path = os.path.join(out_path, "tmp")
+    try:
+        experiment_path = os.listdir(out_path)
+    except Exception as e:
+        return f"Failed to analyze VASP calculation results: {e}, please check if the calculation is finished or you have submitted the calculation"
+    
+    if not experiment_path:
+        return f"No calculation results found, please check if the calculation is finished or you have submitted the calculation"
+    
     result_list = []
 
     for path in experiment_path:
         path = os.path.join(out_path, path)
         if not os.path.exists(path):
-            raise ValueError(f"Calculation directory {path} does not exist, Please check if the calculation is finished or you have submitted the calculation")
+            return f"Calculation directory {path} does not exist, Please check if the calculation is finished or you have submitted the calculation"
         xml_path = os.path.join(path, "vasprun.xml")
 
         parser = VasprunParser(xml_path)
@@ -297,13 +312,14 @@ def show_vasp_config(calcdir: str) -> dict:
         config_info = show_vasp_config("tmp/my_calc")
         print(config_info["INCAR"])
 
-    Raises:
-        FileNotFoundError: If the specified directory or 'INCAR' file does not exist.
     """
-    if not os.path.exists(calcdir):
-        calcdir = os.path.join("tmp", calcdir)
+    try:
         if not os.path.exists(calcdir):
-            return {"error": "Calculation directory does not exist."}
+            calcdir = os.path.join("tmp", calcdir)
+            if not os.path.exists(calcdir):
+                return {"error": "Calculation directory does not exist."}
+    except Exception as e:
+        return {"error": f"Failed to show VASP config: {e}"}
 
     result = {}
     for config in ["INCAR"]:
