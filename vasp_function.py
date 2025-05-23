@@ -143,7 +143,6 @@ def analyze_vasprun_all() -> list:
     
     base_path = "server/"
     folders = [f for f in os.listdir(base_path) if os.path.isdir(os.path.join(base_path, f))]
-    print(folders)
     if not folders:
         return f"No calculation results found, please check if the calculation is finished or you have submitted the calculation"
     out_path = os.path.join(base_path, folders[0])
